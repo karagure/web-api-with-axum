@@ -15,3 +15,8 @@ A wrong method on a known route (e.g. `POST /ping`) also returns `404`.
 
 The server reads the listening port from the `PORT` environment variable,
 loaded from a `.env` file. It defaults to `3000` when unset.
+
+## Documentation
+
+The generated API documentation is available at
+[`doc/tp_wik_dps_01/index.html`](doc/tp_wik_dps_01/index.html).
