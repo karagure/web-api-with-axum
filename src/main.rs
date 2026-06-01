@@ -70,3 +70,49 @@ fn resolve_instance_id() -> String {
     env::var("INSTANCE_ID")
         .unwrap_or_else(|_| gethostname::gethostname().to_string_lossy().into_owned())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use axum::body::{Body, to_bytes};
+    use axum::http::{Request, StatusCode};
+    use serde_json::Value;
+    use tower::ServiceExt; // for `oneshot`
+
+    fn test_state() -> AppState {
+        AppState {
+            counter: Arc::new(InMemoryCounter::new()),
+            started_at: Instant::now(),
+            instance_id: "test-instance".to_string(),
+        }
+    }
+
+    async fn get(app: &Router, path: &str) -> axum::response::Response {
+        app.clone()
+            .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn stats_counts_every_request_including_itself() {
+        let app = build_app(test_state());
+
+        // Two /ping requests and one 404 — all should be counted.
+        assert_eq!(get(&app, "/ping").await.status(), StatusCode::OK);
+        assert_eq!(get(&app, "/ping").await.status(), StatusCode::OK);
+        assert_eq!(get(&app, "/missing").await.status(), StatusCode::NOT_FOUND);
+
+        // The 4th request (this /stats call) is also counted by the middleware.
+        let response = get(&app, "/stats").await;
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(json["total_requests"], 4);
+        assert_eq!(json["instance_id"], "test-instance");
+        assert!(json["uptime_seconds"].is_u64());
+    }
+}
