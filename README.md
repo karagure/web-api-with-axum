@@ -18,5 +18,8 @@ loaded from a `.env` file. It defaults to `3000` when unset.
 
 ## Documentation
 
-The generated API documentation is available at
-[`doc/tp_wik_dps_01/index.html`](doc/tp_wik_dps_01/index.html).
+The generated API documentation is published via GitHub Pages:
+<https://karagure.github.io/web-api-with-axum/tp_wik_dps_01/>
+
+The HTML lives in [`docs/`](docs/) and is served once GitHub Pages is enabled
+(Settings → Pages → Source: branch `main`, folder `/docs`).
