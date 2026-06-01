@@ -1,15 +1,28 @@
 //! Minimal Axum web API.
 //!
-//! Exposes `GET /ping` and returns `404` (headers only) for everything else.
-//! The listening port is read from the `PORT` environment variable
-//! (via a `.env` file), defaulting to `3000`.
+//! Routes:
+//! - `GET /ping`  → `200` with `{"status":"ok"}`
+//! - `GET /stats` → `200` with request count, uptime, and instance id
+//! - everything else → `404` (headers only)
+//!
+//! The listening port is read from `PORT` (default `3000`) and the instance id
+//! from `INSTANCE_ID` (default: machine hostname), both via a `.env` file.
+
+mod counter;
+mod handlers;
+mod state;
 
 use std::env;
+use std::sync::Arc;
+use std::time::Instant;
 
-use axum::{Json, Router, http::StatusCode, routing::get};
-use serde_json::{Value, json};
+use axum::{Router, middleware, routing::get};
 
-/// Application entrypoint: load config, build the router, and serve.
+use crate::counter::InMemoryCounter;
+use crate::handlers::{count_requests, not_found, ping, stats};
+use crate::state::AppState;
+
+/// Application entrypoint: load config, build state and router, then serve.
 #[tokio::main]
 async fn main() {
     // Load variables from a local `.env` file if present.
@@ -21,7 +34,13 @@ async fn main() {
         .and_then(|value| value.parse().ok())
         .unwrap_or(3000);
 
-    let app = Router::new().route("/ping", get(ping)).fallback(not_found);
+    let state = AppState {
+        counter: Arc::new(InMemoryCounter::new()),
+        started_at: Instant::now(),
+        instance_id: resolve_instance_id(),
+    };
+
+    let app = build_app(state);
 
     let addr = format!("0.0.0.0:{port}");
     let listener = tokio::net::TcpListener::bind(&addr)
@@ -33,15 +52,21 @@ async fn main() {
     axum::serve(listener, app).await.expect("server error");
 }
 
-/// Health-check endpoint. Always returns `200 OK` with `{"status":"ok"}`.
-async fn ping() -> Json<Value> {
-    Json(json!({ "status": "ok" }))
+/// Build the router: routes, fallback, and the request-counting middleware.
+fn build_app(state: AppState) -> Router {
+    Router::new()
+        .route("/ping", get(ping))
+        .route("/stats", get(stats))
+        .fallback(not_found)
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            count_requests,
+        ))
+        .with_state(state)
 }
 
-/// Catch-all handler for unknown routes and unsupported methods.
-///
-/// Returns `404 Not Found` with no body — only headers. This also covers
-/// wrong methods on known routes (e.g. `POST /ping` → `404`).
-async fn not_found() -> StatusCode {
-    StatusCode::NOT_FOUND
+/// Resolve the instance id from `INSTANCE_ID`, falling back to the hostname.
+fn resolve_instance_id() -> String {
+    env::var("INSTANCE_ID")
+        .unwrap_or_else(|_| gethostname::gethostname().to_string_lossy().into_owned())
 }
