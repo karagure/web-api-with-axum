@@ -1,1 +1,0 @@
-rd_("CnApplication entrypoint: load config, build the router, and \xe2\x80\xa6DbHealth-check endpoint. Always returns <code>200 OK</code> with \xe2\x80\xa6ChCatch-all handler for unknown routes and unsupported \xe2\x80\xa6AeMinimal Axum web API.")
