@@ -14,7 +14,7 @@ async fn main() {
         .await
         .expect("failed to bind TCP listener");
 
-    println!("listening on {}", listener.local_addr().unwrap());
+    println!("listening on http://{}", listener.local_addr().unwrap());
 
     axum::serve(listener, app).await.expect("server error");
 }
