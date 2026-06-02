@@ -18,6 +18,11 @@ RUN touch src/main.rs && cargo build --release
 # ---- Runtime stage ----
 FROM debian:bookworm-slim AS runtime
 
+# curl is used by the compose healthcheck; clean up apt lists to stay slim.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Run as a non-root user.
 RUN useradd --create-home --user-group app
 USER app
