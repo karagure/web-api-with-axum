@@ -1,0 +1,9 @@
+/target
+/.git
+/docs
+/.superpowers
+/.claude
+.env
+*.md
+Dockerfile
+.dockerignore
