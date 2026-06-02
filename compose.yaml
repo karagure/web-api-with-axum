@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    image: tp-wik-dps-01
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    environment:
+      PORT: ${PORT:-3000}
+      INSTANCE_ID: ${INSTANCE_ID:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:${PORT:-3000}/ping || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
